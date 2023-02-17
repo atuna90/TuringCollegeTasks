@@ -1,0 +1,38 @@
+Link to spreadsheets:
+
+Module 1 Sprint 3 (SQL and databases):
+https://docs.google.com/spreadsheets/d/1eGbOJDNogcb6y8S0cuvv4aeu0Muibx6nYSiebze7pYM/edit?usp=sharing
+
+Module 2 Sprint 1 (Retention, Cohorts & Churn):
+https://docs.google.com/spreadsheets/d/1-XSLCF8QwhCDJR9P2gPZ6W_4reXiCP-YswQ-wYUMNec/edit#gid=192010870
+
+Module 2 Sprint 2 (Funnels & A/B Tests):
+AB tests:
+https://docs.google.com/spreadsheets/d/1WJnhn2-XoCoZpanrI8xwQxiW3D9GMzhC/edit?usp=sharing&ouid=116132203825922511448&rtpof=true&sd=true
+Funnels:
+https://docs.google.com/spreadsheets/d/1XKo4K09UPosjXu-i7fK8UY7s_yoX3mPDjZwutduVtaI/edit?usp=sharing
+
+Module 2 Sprint 3 (CLV, Customer Segmentation & RFM):
+https://docs.google.com/spreadsheets/d/1PEpwPHTNhoI18C5aXjiK4trehO2bpyqChBcvyr89oVw/edit?usp=sharing
+
+Module 2 Sprint 4 (Linear and logistic regression):
+https://docs.google.com/spreadsheets/d/1Tub0GGAkXrIi57tJ5YNfxCs6oSnMgh6S/edit?usp=sharing&ouid=116132203825922511448&rtpof=true&sd=true
+
+Module 3 Sprint 1 (Product analyst):
+https://docs.google.com/spreadsheets/d/1yaX_hql5hux562QheRuKV9ZJnZHKDEwn4PlAHr1fPWo/edit?usp=sharing
+
+Module 4 Sprint 1 (Visualising data using data studio):
+https://datastudio.google.com/u/0/reporting/391e4f48-3182-412e-a701-3e7e2f299f0f/page/Tne7C
+
+Module 4 Sprint 2 (Presentation and soft skills): 
+Sales dashboard:
+https://datastudio.google.com/u/0/reporting/2473d401-8a9e-466a-9c63-c596ceab44dd/page/wa59C?s=oPZxRcdBaw4
+Executive dashboard:
+https://datastudio.google.com/reporting/376541e7-700d-4c29-9bd7-5708c4049c6f
+
+
+
+
+
+
+
