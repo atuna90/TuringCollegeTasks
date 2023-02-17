@@ -1,0 +1,312 @@
+--Review score counts
+SELECT review_score,
+COUNT(*) number_of_scores
+FROM `olist_db.olist_order_reviews_dataset`
+GROUP BY 1
+ORDER BY 1 DESC
+
+--Review score counts with empty message
+SELECT review_score,
+COUNT(*) number_of_scores
+FROM `olist_db.olist_order_reviews_dataset`
+WHERE review_comment_message_length = 0
+GROUP BY 1
+ORDER BY 1 DESC
+
+--Price and freight value min/max/avg
+SELECT MIN(price) min_price,
+AVG(price) avg_price,
+MAX(price)max_price,
+MIN(freight_value)min_freight,
+AVG(freight_value)avg_freight,
+MAX(freight_value)max_freight
+FROM `olist_db.olist_order_items_dataset`
+
+--seller count and percentage per state
+WITH total_sellers AS
+(
+  SELECT COUNT(seller_id) seller_total_count
+  FROM `olist_db.olist_sellers_dataset`
+),
+sellers_per_state AS
+(
+  SELECT seller_state,
+  COUNT(seller_id) seller_count_per_state
+  FROM `olist_db.olist_sellers_dataset`
+  GROUP BY 1
+)
+SELECT sps.seller_state,
+sps.seller_count_per_state,
+sps.seller_count_per_state/ts.seller_total_count percentage_of_sellers
+FROM sellers_per_state sps, total_sellers ts
+ORDER BY 2 DESC
+
+--customer count and percentage per state
+WITH total_customers AS
+(
+  SELECT COUNT(customer_id) customer_total_count
+  FROM `olist_db.olist_customesr_dataset`
+),
+customers_per_state AS
+(
+  SELECT customer_state,
+  COUNT(customer_id) customer_count_per_state
+  FROM `olist_db.olist_customesr_dataset`
+  GROUP BY 1
+)
+SELECT cps.customer_state,
+cps.customer_count_per_state,
+cps.customer_count_per_state/tc.customer_total_count percentage_of_customers
+FROM customers_per_state cps, total_customers tc
+ORDER BY 2 DESC
+
+--seller per 1000 customers
+WITH customers_per_state AS
+(
+  SELECT customer_state,
+  COUNT(customer_id) customer_count_per_state
+  FROM `olist_db.olist_customesr_dataset`
+  GROUP BY 1
+),
+sellers_per_state AS
+(
+  SELECT seller_state,
+  COUNT(seller_id) seller_count_per_state
+  FROM `olist_db.olist_sellers_dataset`
+  GROUP BY 1
+)
+SELECT cps.customer_state,
+cps.customer_count_per_state,
+sps.seller_count_per_state,
+sps.seller_count_per_state * 1000/cps.customer_count_per_state seller_per_thousand_customers
+FROM customers_per_state cps
+FULL JOIN sellers_per_state sps
+ON cps.customer_state = sps.seller_state
+ORDER BY 4 DESC
+
+--orders in state
+WITH total_orders AS(
+  SELECT COUNT(DISTINCT(order_id)) ttl_orders,
+  FROM `olist_db.olist_orders_dataset`
+),
+orders_in_state AS(
+  SELECT COUNT(DISTINCT(oo.order_id)) number_of_orders_in_state
+  FROM `olist_db.olist_orders_dataset` oo
+  JOIN `olist_db.olist_customesr_dataset` oc
+  ON oo.customer_id = oc.customer_id
+  JOIN `olist_db.olist_order_items_dataset` oi
+  ON oo.order_id = oi.order_id
+  JOIN `olist_db.olist_sellers_dataset` os
+  ON os.seller_id = oi.seller_id
+  WHERE oc.customer_state = os.seller_state
+)
+SELECT ois.number_of_orders_in_state/ttlo.ttl_orders perc_in_state,
+ois.number_of_orders_in_state,
+ttlo.ttl_orders
+FROM total_orders ttlo, orders_in_state ois
+
+--state percentage in state
+WITH total_orders AS(
+  SELECT COUNT(DISTINCT(order_id)) ttl_orders,
+  ocd.customer_state
+  FROM `olist_db.olist_orders_dataset` ood
+  JOIN `olist_db.olist_customesr_dataset` ocd 
+  ON ocd.customer_id = ood.customer_id
+  GROUP BY 2
+),
+orders_in_state AS(
+  SELECT COUNT(DISTINCT(oo.order_id)) number_of_orders_in_state,
+  os.seller_state
+  FROM `olist_db.olist_orders_dataset` oo
+  JOIN `olist_db.olist_customesr_dataset` oc
+  ON oo.customer_id = oc.customer_id
+  JOIN `olist_db.olist_order_items_dataset` oi
+  ON oo.order_id = oi.order_id
+  JOIN `olist_db.olist_sellers_dataset` os
+  ON os.seller_id = oi.seller_id
+  WHERE oc.customer_state = os.seller_state
+  GROUP BY 2
+)
+SELECT ttlo.customer_state, 
+ois.number_of_orders_in_state/ttlo.ttl_orders perc_in_state,
+ois.number_of_orders_in_state,
+ttlo.ttl_orders
+FROM total_orders ttlo
+FULL JOIN orders_in_state ois
+ON ttlo.customer_state = ois.seller_state
+ORDER BY 2 DESC
+
+--time period
+SELECT MIN(order_purchase_timestamp),
+MAX(order_purchase_timestamp)
+FROM `olist_db.olist_orders_dataset`
+
+--RFM
+WITH last_date AS(
+  SELECT MAX(order_purchase_timestamp) last_timestamp
+  FROM `olist_db.olist_orders_dataset`
+  ),
+--MONETARY
+monetary AS(
+  SELECT SUM(price + freight_value) M,
+order_id
+FROM `olist_db.olist_order_items_dataset`
+GROUP BY 2
+),
+--RECENCY
+recency AS(
+SELECT DATE_DIFF(ld.last_timestamp, oo.order_purchase_timestamp, DAY) R,
+order_id,
+customer_id
+FROM `olist_db.olist_orders_dataset` oo,last_date ld
+GROUP BY ld.last_timestamp, oo.order_purchase_timestamp,  2 , 3
+),
+--FREQUENCY
+frequency AS(
+SELECT MAX(payment_sequential) F,
+order_id
+FROM `olist_db.olist_order_payments_dataset`
+GROUP BY 2
+ORDER BY 1 DESC
+),
+scores AS(
+  SELECT oc.customer_id,
+  r.order_id,
+  r.R,
+  NTILE(4) OVER (ORDER BY r.R DESC) r_score,
+  f.F,
+  NTILE(4) OVER (ORDER BY f.F) f_score,
+  m.M,
+  NTILE(4) OVER (ORDER BY m.M) m_score
+  FROM `olist_db.olist_customesr_dataset` oc
+  JOIN recency r
+  ON oc.customer_id = r.customer_id
+  JOIN frequency f
+  ON f.order_id =  r.order_id
+  JOIN monetary m
+  ON m.order_id = r.order_id
+),
+rfm AS(
+  SELECT scr.customer_id,
+  scr.R,
+  scr.r_score,
+  scr.F,
+  scr.f_score,
+  scr.M,
+  scr.m_score,
+  CONCAT(scr.r_score,scr.f_score,scr.m_score) rfm_score
+  FROM scores scr
+)
+
+SELECT AVG(rfm.R) avg_r,
+AVG(rfm.F) avg_f,
+SUM(rfm.M) sum_m,
+CASE WHEN rfm_score IN ('444','344','434') THEN 'Superstar' 
+WHEN rfm_score IN ('443','442','334','324','244','234','144') THEN 'Golden'
+WHEN rfm_score IN ('314','313','224','214','213','124','123','114','113') THEN 'Occasional big spender'
+WHEN rfm_score IN ('424','423','422','421') THEN 'Promising'
+WHEN rfm_score IN ('441','433','432','431','343','342','341','331') THEN 'Everyday shopers'
+WHEN rfm_score IN ('414','413','412','411') THEN 'New'
+WHEN rfm_score IN ('312','311','242','241') THEN 'Sleeping'
+WHEN rfm_score IN ('243','134','133') THEN 'Can not lose'
+WHEN rfm_score IN ('212','211','112','111') THEN 'Lost'
+ELSE 'Typical' END customer_segment
+FROM rfm
+GROUP BY 4
+
+--pareto seller states
+WITH t1 AS(
+SELECT state,
+revenue,
+SUM(revenue) OVER (ORDER BY revenue DESC) cumulative_sum,
+FROM(
+  SELECT os.seller_state state,
+SUM(price + freight_value) revenue
+FROM `olist_db.olist_sellers_dataset` os
+JOIN `olist_db.olist_order_items_dataset` oi
+ON oi.seller_id = os.seller_id
+GROUP BY 1
+ORDER BY 2 DESC
+))
+,
+t2 AS
+(
+SELECT MAX(cumulative_sum) total_revenue
+FROM t1
+)
+SELECT t1.state,
+t1.revenue,
+t1.cumulative_sum,
+t1.cumulative_sum/t2.total_revenue percent_of_total
+FROM t1, t2
+
+--pareto customer states
+WITH t1 AS(
+SELECT state,
+revenue,
+SUM(revenue) OVER (ORDER BY revenue DESC) cumulative_sum,
+FROM(
+  SELECT oc.customer_state state,
+SUM(price + freight_value) revenue
+FROM `olist_db.olist_customesr_dataset` oc
+JOIN `olist_db.olist_orders_dataset` oo
+ON oc.customer_id = oo.customer_id
+JOIN `olist_db.olist_order_items_dataset` oi
+ON oi.order_id = oo.order_id
+GROUP BY 1
+ORDER BY 2 DESC
+))
+,
+t2 AS
+(
+SELECT MAX(cumulative_sum) total_revenue
+FROM t1
+)
+SELECT t1.state,
+t1.revenue,
+t1.cumulative_sum,
+t1.cumulative_sum/t2.total_revenue percent_of_total
+FROM t1, t2
+
+--AOV for states
+WITH order_revenue AS(
+  SELECT oo.order_id,
+  customer_state,
+SUM(price + freight_value) revenue
+FROM `olist_db.olist_order_items_dataset` oo
+JOIN `olist_db.olist_orders_dataset` od
+ON oo.order_id = od.order_id
+JOIN `olist_db.olist_customesr_dataset` oc
+ON oc.customer_id = od.customer_id
+GROUP BY 1, 2)
+
+SELECT AVG(revenue) AOV,
+COUNT(DISTINCT(order_id)) number_of_orders,
+orr.customer_state
+FROM order_revenue orr
+GROUP BY 3
+ORDER BY 1 DESC
+
+--AOV and total orders monthly
+WITH value_for_single_order AS(
+  SELECT order_id,
+  SUM(price + freight_value) AOV
+  FROM `olist_db.olist_order_items_dataset`
+  GROUP BY 1
+)
+
+SELECT DATE(TIMESTAMP_TRUNC(order_purchase_timestamp, MONTH)) month,
+SUM(AOV) total_sales,
+AVG(AOV) average_order_value,
+COUNT(DISTINCT(vfso.order_id)) total_orders
+FROM `olist_db.olist_orders_dataset` oo
+JOIN value_for_single_order vfso
+ON oo.order_id = vfso.order_id
+WHERE DATE(TIMESTAMP_TRUNC(order_purchase_timestamp, MONTH)) BETWEEN '2017-01-01' AND '2018-08-01'
+GROUP BY 1
+ORDER BY 1
+
+
+
+
+
